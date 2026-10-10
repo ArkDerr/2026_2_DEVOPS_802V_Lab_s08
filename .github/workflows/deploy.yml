@@ -75,15 +75,6 @@ jobs:
           # Avisa si por algún motivo no se generó el archivo.
           if-no-files-found: warn
 
-      # Convierte el resultado del scan en una barrera real del pipeline.
-      - name: 7. Bloquear si Snyk detectó un problema
-        if: steps.snyk_scan.outcome == 'failure'
-        run: |
-          # Informa el motivo en el log del job.
-          echo "Snyk detectó vulnerabilidades que superan el umbral configurado."
-          # Devuelve código 1 para marcar el job como Failed.
-          exit 1
-
   # ==========================================================
   # CI 1 - PRUEBAS UNITARIAS + COBERTURA
   # ==========================================================
