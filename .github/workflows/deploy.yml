@@ -70,7 +70,8 @@ jobs:
           snyk test \
             --maven-aggregate-project \
             --severity-threshold=high \
-            --json-file-output=snyk-report.json
+            --json-file-output=snyk-report.json \
+            -d
 
           # Guardamos el código devuelto por Snyk.
           SNYK_EXIT_CODE=$?
