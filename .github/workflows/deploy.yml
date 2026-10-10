@@ -1,6 +1,6 @@
 # ============================================================
 # BIBLIOTECA - CI/CD CON PRUEBAS, JACOCO Y DOCKER COMPOSE
-# ============================================================
+# ==============================================================
 name: Biblioteca CI-CD - Tests JaCoCo y Docker Compose
 
 on:
@@ -60,8 +60,43 @@ jobs:
       # Ejecuta el análisis, pero deja continuar temporalmente para poder subir el reporte.
       - name: 5. Analizar dependencias
         id: snyk_scan
-        continue-on-error: true
-        run: snyk test --all-projects --severity-threshold=high --json > snyk-report.json
+        shell: bash
+        run: |
+          # Permitimos capturar el código de salida manualmente.
+          set +e
+
+          # Para un proyecto Maven multi-módulo usamos
+          # --maven-aggregate-project en lugar de --all-projects.
+          snyk test \
+            --maven-aggregate-project \
+            --severity-threshold=high \
+            --json-file-output=snyk-report.json
+
+          # Guardamos el código devuelto por Snyk.
+          SNYK_EXIT_CODE=$?
+
+          # Volvemos al comportamiento normal.
+          set -e
+
+          echo "Código de salida Snyk: $SNYK_EXIT_CODE"
+
+          # 0 = análisis correcto y sin vulnerabilidades bloqueantes.
+          if [ "$SNYK_EXIT_CODE" -eq 0 ]; then
+            echo "Análisis Snyk completado correctamente."
+            exit 0
+          fi
+
+          # 1 = encontró vulnerabilidades.
+          # En este laboratorio las reportamos, pero no bloqueamos.
+          if [ "$SNYK_EXIT_CODE" -eq 1 ]; then
+            echo "Snyk encontró vulnerabilidades."
+            echo "Modo laboratorio: el pipeline continuará."
+            exit 0
+          fi
+
+          # Cualquier otro código corresponde a un problema técnico.
+          echo "Error técnico ejecutando Snyk."
+          exit "$SNYK_EXIT_CODE"
 
       # Conserva el reporte aunque el análisis haya encontrado un problema.
       - name: 6. Publicar reporte Snyk
