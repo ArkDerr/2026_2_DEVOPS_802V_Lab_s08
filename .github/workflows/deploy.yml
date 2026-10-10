@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
 
-  # CI 0 - SEGURIDAD SCA CON SNYK
+  # CI 0 - SEGURIDAD SCA CON SNYK (Prueba)
   seguridad_snyk:
     # Nombre visible del job en GitHub Actions.
     name: Seguridad Snyk - Dependencias
