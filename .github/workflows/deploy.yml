@@ -23,11 +23,73 @@ concurrency:
 
 jobs:
 
+  # CI 0 - SEGURIDAD SCA CON SNYK
+  seguridad_snyk:
+    # Nombre visible del job en GitHub Actions.
+    name: Seguridad Snyk - Dependencias
+    # GitHub ejecutará el job en un runner Linux temporal.
+    runs-on: ubuntu-latest
+
+    steps:
+      # Descarga el repositorio dentro del runner.
+      - name: 1. Descargar código
+        uses: actions/checkout@v4
+
+      # Configura Java 21 porque Snyk debe resolver proyectos Maven.
+      - name: 2. Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          # Usa la distribución Temurin.
+          distribution: temurin
+          # Mantiene la misma versión Java del proyecto Biblioteca.
+          java-version: '21'
+          # Habilita caché de dependencias Maven.
+          cache: maven
+
+      # Instala la herramienta de línea de comandos de Snyk.
+      - name: 3. Instalar Snyk CLI
+        run: npm install -g snyk
+
+      # Autentica la CLI sin escribir el token en el repositorio.
+      - name: 4. Autenticar Snyk
+        env:
+          # Recupera el token guardado en GitHub Secrets.
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk auth "$SNYK_TOKEN"
+
+      # Ejecuta el análisis, pero deja continuar temporalmente para poder subir el reporte.
+      - name: 5. Analizar dependencias
+        id: snyk_scan
+        continue-on-error: true
+        run: snyk test --all-projects --severity-threshold=high --json > snyk-report.json
+
+      # Conserva el reporte aunque el análisis haya encontrado un problema.
+      - name: 6. Publicar reporte Snyk
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          # Nombre visible en la sección Artifacts de GitHub Actions.
+          name: snyk-report
+          # Archivo generado por el paso anterior.
+          path: snyk-report.json
+          # Avisa si por algún motivo no se generó el archivo.
+          if-no-files-found: warn
+
+      # Convierte el resultado del scan en una barrera real del pipeline.
+      - name: 7. Bloquear si Snyk detectó un problema
+        if: steps.snyk_scan.outcome == 'failure'
+        run: |
+          # Informa el motivo en el log del job.
+          echo "Snyk detectó vulnerabilidades que superan el umbral configurado."
+          # Devuelve código 1 para marcar el job como Failed.
+          exit 1
+
   # ==========================================================
   # CI 1 - PRUEBAS UNITARIAS + COBERTURA
   # ==========================================================
   pruebas:
     name: Pruebas unitarias y cobertura JaCoCo
+    needs: seguridad_snyk
     runs-on: ubuntu-latest
 
     steps:
