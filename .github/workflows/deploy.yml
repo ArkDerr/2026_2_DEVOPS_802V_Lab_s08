@@ -125,12 +125,69 @@ jobs:
           path: ms-catalogo/target/site/jacoco/
           if-no-files-found: error
 
+  
+  # CI 2 - INSPECCIÓN ESTÁTICA / CALIDAD CON SONARCLOUD
+  sonarcloud:
+    # Nombre visible en GitHub Actions.
+    name: Análisis estático SonarCloud
+    # Solo comienza cuando las pruebas y JaCoCo terminaron correctamente.
+    needs: pruebas
+    # Ejecuta el análisis en Linux.
+    runs-on: ubuntu-latest
+
+    steps:
+      # Descarga el repositorio y conserva el historial para el análisis.
+      - name: 1. Descargar código
+        uses: actions/checkout@v4
+        with:
+          # Evita un clon superficial y entrega más contexto al analizador.
+          fetch-depth: 0
+
+      # Configura la misma versión Java usada por Biblioteca.
+      - name: 2. Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          # Distribución Java usada por el runner.
+          distribution: temurin
+          # Versión Java del proyecto.
+          java-version: '21'
+          # Reutiliza dependencias Maven entre ejecuciones.
+          cache: maven
+
+      # Recupera el reporte JaCoCo generado por el job pruebas.
+      - name: 3. Descargar reporte JaCoCo
+        uses: actions/download-artifact@v4
+        with:
+          # Nombre del artefacto creado en el job pruebas.
+          name: jacoco-ms-catalogo
+          # Restaura los archivos donde SonarCloud espera encontrar el XML.
+          path: ms-catalogo/target/site/jacoco/
+
+      # Ejecuta el análisis del proyecto Maven en SonarCloud.
+      - name: 4. Ejecutar análisis SonarCloud
+        env:
+          # Token protegido en GitHub Secrets.
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # Clave del proyecto almacenada como variable de repositorio.
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          # Organización almacenada como variable de repositorio.
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+        run: |
+          # Compila sin repetir las pruebas y luego ejecuta el scanner Maven.
+          mvn -B -DskipTests package sonar:sonar \
+            -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+            -Dsonar.organization="$SONAR_ORGANIZATION" \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.token="$SONAR_TOKEN" \
+            -Dsonar.coverage.jacoco.xmlReportPaths=ms-catalogo/target/site/jacoco/jacoco.xml \
+            -Dsonar.qualitygate.wait=true
+
   # ==========================================================
   # CI 2 - VALIDAR DOCKER / COMPOSE
   # ==========================================================
   validar:
     name: Validar Dockerfiles y Compose
-    needs: pruebas
+    needs: sonarcloud
     runs-on: ubuntu-latest
 
     steps:
