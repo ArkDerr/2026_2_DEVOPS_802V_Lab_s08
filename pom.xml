@@ -32,7 +32,7 @@
     <artifactId>biblioteca</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>Proyecto Padre</name>
+    <name>Proyecto Ejmplo Devops</name>
     <description>Proyecto padre para la gestion de versiones de todos los microservicios</description>
 
     <!--

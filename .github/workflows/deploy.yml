@@ -324,17 +324,31 @@ jobs:
           AWS_HOST: ${{ secrets.AWS_HOST }}
           AWS_USER: ${{ secrets.AWS_USER }}
         run: |
-          ssh -i ~/.ssh/biblioteca.pem "$AWS_USER@$AWS_HOST" '
-            set -e
-            cd /opt/biblioteca/current
+          ssh \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=20 \
+            -i ~/.ssh/biblioteca.pem \
+            "$AWS_USER@$AWS_HOST" '
+              set -e
 
-            # Compose reconstruye solo lo necesario y mantiene el
-            # volumen de PostgreSQL entre despliegues.
-            sudo docker compose up -d --build --remove-orphans
+              cd /opt/biblioteca/current
 
-            echo "Estado del stack:"
-            sudo docker compose ps
-          '
+              echo "Construyendo imágenes de forma controlada..."
+
+              # Limita la construcción a una imagen a la vez.
+              sudo docker compose --parallel 1 build
+
+              echo "Levantando contenedores..."
+
+              # Las imágenes ya están construidas.
+              sudo docker compose up \
+                -d \
+                --no-build \
+                --remove-orphans
+
+              echo "Estado del stack:"
+              sudo docker compose ps
+            '
 
       - name: 7. Esperar frontend y verificar despliegue
         shell: bash
