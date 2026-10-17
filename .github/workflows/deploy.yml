@@ -166,15 +166,13 @@ jobs:
       # Ejecuta el análisis del proyecto Maven en SonarCloud.
       - name: 4. Ejecutar análisis SonarCloud
         env:
-          # Token protegido en GitHub Secrets.
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          # Clave del proyecto almacenada como variable de repositorio.
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-          # Organización almacenada como variable de repositorio.
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+
         run: |
-          # Compila sin repetir las pruebas y luego ejecuta el scanner Maven.
-          mvn -B -DskipTests package sonar:sonar \
+          mvn -B -DskipTests package \
+            org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
             -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
             -Dsonar.organization="$SONAR_ORGANIZATION" \
             -Dsonar.host.url=https://sonarcloud.io \
